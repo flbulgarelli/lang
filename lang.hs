@@ -19,8 +19,12 @@ data Expr = U
 
 type Context = Map String Expr
 
+{-- Expression evaluation --}
 
 eval :: Expr -> State Context Expr
+eval (Send receptor message) = do r <- eval receptor
+                                  m <- eval message
+                                  return (Send r m)
 eval (Comment _) = return U
 eval (VSet name value) = do n <- eval name
                             v <- eval value
@@ -35,13 +39,20 @@ eval (M selector args) = do s <- eval selector
                             return $ M s a 
 eval n = return n
 
+runClean = flip runState Map.empty
+
 evalClean = runClean.eval
 
-runClean = flip runState Map.empty
+{- Expressions sequence  evaluation --}
 
 evalAll exprs = mapWithState eval exprs
 
 evalAllClean = runClean.evalAll
+
+{- Method lookup -}
+
+--TODO 
+{- Context handling -}
 
 type PutCheck = (String -> Context -> Bool, String)
 putCheck = (\n -> member n, "already defined") :: PutCheck
@@ -55,6 +66,7 @@ getDef (Sym n) = do
            ctx <- get
            return $ ctx ! n
 
+{- Generic functions -}
 
 swap (x, y) = (y, x)
 
@@ -62,7 +74,9 @@ mapWithState ::  (a-> State s b) -> [a] -> State s [b]
 mapWithState f xs = State $ mapAccumStateL f xs
    where mapAccumStateL f xs s = (swap.mapAccumL (\s' a -> (swap.runState (f a)) s') s) xs
 
+{- File Parsing -}
 
 evalFile filename = do 
                     content <- readFile filename
                     return . evalAllClean . map read . lines $ content 
+
