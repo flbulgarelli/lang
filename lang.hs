@@ -10,6 +10,7 @@ data Expr = NumberE Double
           | MessageE { selector :: Expr, messageArgs :: [Expr] }
           | VarE Expr
           | VarDefE Expr Expr
+          | VarAssignE Expr Expr 
           deriving Show
 
 
@@ -17,9 +18,12 @@ type Context = Map String Expr
 
 
 eval :: Expr -> State Context Expr
+eval (VarAssignE name value) = do n <- eval name
+                                  v <- eval value
+                                  putDef updateCheck n v                      
 eval (VarDefE name value) = do n <- eval name
                                v <- eval value
-                               putDef n v
+                               putDef putCheck n v
 eval (VarE name) =  do  n <- eval name
                         getDef n
 eval (MessageE selector args) = do s <- eval selector  
@@ -35,10 +39,13 @@ evalAll exprs = mapWithState eval exprs
 
 evalAllClean = runClean.evalAll
 
-putDef (SymbolE n) v = State put  
-                  where put ctx | member n ctx = error "already defined"
-                                | otherwise = (v, insert n v ctx)    
+type PutCheck = (String -> Context -> Bool, String)
+putCheck = (\n -> member n, "already defined")
+updateCheck = (\n -> not.member n, "never defined")
 
+putDef check (SymbolE n) v = State put  
+                  where put ctx | fst check n ctx = error (snd check)
+                                | otherwise = (v, insert n v ctx)    
 
 getDef (SymbolE n) = do
            ctx <- get
@@ -54,7 +61,13 @@ mapWithState f xs = State $ mapAccumStateL f xs
 
 
 
+vdef = VarDefE 
+vset = VarAssignE 
+v = VarE
 
+sym = SymbolE
+str = StringE 
+num = NumberE 
 
 
 
