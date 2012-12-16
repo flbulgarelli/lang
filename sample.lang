@@ -1,3 +1,14 @@
+Comment "this is a comment. is has Unit Value"
+Comment "declaring foo with numeric value 4. Its value is 4"
 VDef (Sym "foo") (N 4) 
+Comment "setting foo with numeric value 9. Its value is 9"
 VSet (Sym "foo") (N 9)
+Comment "getting value of foo"
 V (Sym "foo")
+Comment "messages are values too"
+(M (Sym "+") [(N 3)])
+Comment "sending message + to variable foo. Its value is lost"
+Send  (V (Sym "foo")) (M (Sym "+") [(N 3)])
+Comment "equivalent to previous line"
+VDef (Sym "add_three") (M (Sym "+") [(N 3)])
+Send (V (Sym "foo")) (V (Sym "add_three"))

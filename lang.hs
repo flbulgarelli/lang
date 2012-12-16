@@ -3,14 +3,17 @@ import Data.Traversable
 import Data.Maybe
 import Data.Map as Map hiding (map)
 
-data Expr = N Double
+data Expr = U 
+          | N Double
           | S String
           | Sym String 
           | B   Bool
-          | M { selector :: Expr, messageArgs :: [Expr] }
+          | M Expr [Expr] 
           | V Expr
           | VDef Expr Expr
-          | VSet Expr Expr 
+          | VSet Expr Expr
+          | Comment String
+          | Send Expr Expr
           deriving (Show, Read)
 
 
@@ -18,6 +21,7 @@ type Context = Map String Expr
 
 
 eval :: Expr -> State Context Expr
+eval (Comment _) = return U
 eval (VSet name value) = do n <- eval name
                             v <- eval value
                             putDef updateCheck n v                      
