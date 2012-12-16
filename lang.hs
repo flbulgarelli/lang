@@ -1,34 +1,34 @@
 import Control.Monad.State
 import Data.Traversable
 import Data.Maybe
-import Data.Map as Map
+import Data.Map as Map hiding (map)
 
-data Expr = NumberE Double
-          | StringE String
-          | SymbolE String 
-          | BoolE   Bool
-          | MessageE { selector :: Expr, messageArgs :: [Expr] }
-          | VarE Expr
-          | VarDefE Expr Expr
-          | VarAssignE Expr Expr 
-          deriving Show
+data Expr = N Double
+          | S String
+          | Sym String 
+          | B   Bool
+          | M { selector :: Expr, messageArgs :: [Expr] }
+          | V Expr
+          | VDef Expr Expr
+          | VSet Expr Expr 
+          deriving (Show, Read)
 
 
 type Context = Map String Expr
 
 
 eval :: Expr -> State Context Expr
-eval (VarAssignE name value) = do n <- eval name
-                                  v <- eval value
-                                  putDef updateCheck n v                      
-eval (VarDefE name value) = do n <- eval name
-                               v <- eval value
-                               putDef putCheck n v
-eval (VarE name) =  do  n <- eval name
-                        getDef n
-eval (MessageE selector args) = do s <- eval selector  
-                                   a <- mapWithState eval args
-                                   return $ MessageE s a 
+eval (VSet name value) = do n <- eval name
+                            v <- eval value
+                            putDef updateCheck n v                      
+eval (VDef name value) = do n <- eval name
+                            v <- eval value
+                            putDef putCheck n v
+eval (V name) =  do  n <- eval name
+                     getDef n
+eval (M selector args) = do s <- eval selector  
+                            a <- mapWithState eval args
+                            return $ M s a 
 eval n = return n
 
 evalClean = runClean.eval
@@ -40,14 +40,14 @@ evalAll exprs = mapWithState eval exprs
 evalAllClean = runClean.evalAll
 
 type PutCheck = (String -> Context -> Bool, String)
-putCheck = (\n -> member n, "already defined")
-updateCheck = (\n -> not.member n, "never defined")
+putCheck = (\n -> member n, "already defined") :: PutCheck
+updateCheck = (\n -> not.member n, "never defined") :: PutCheck
 
-putDef check (SymbolE n) v = State put  
+putDef check (Sym n) v = State put  
                   where put ctx | fst check n ctx = error (snd check)
                                 | otherwise = (v, insert n v ctx)    
 
-getDef (SymbolE n) = do
+getDef (Sym n) = do
            ctx <- get
            return $ ctx ! n
 
@@ -59,19 +59,6 @@ mapWithState f xs = State $ mapAccumStateL f xs
    where mapAccumStateL f xs s = (swap.mapAccumL (\s' a -> (swap.runState (f a)) s') s) xs
 
 
-
-
-vdef = VarDefE 
-vset = VarAssignE 
-v = VarE
-
-sym = SymbolE
-str = StringE 
-num = NumberE 
-
-
-
-
-
-
-
+evalFile filename = do 
+                    content <- readFile filename
+                    return . evalAllClean . map read . lines $ content 

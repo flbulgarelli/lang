@@ -1,0 +1,3 @@
+VDef (Sym "foo") (N 4) 
+VSet (Sym "foo") (N 9)
+V (Sym "foo")
