@@ -1,6 +1,7 @@
 import Control.Monad.State
 import Data.Traversable
 import Data.Maybe
+import Data.Map as Map
 
 data Expr = NumberE Double
           | StringE String
@@ -12,7 +13,7 @@ data Expr = NumberE Double
           deriving Show
 
 
-type Context =  [(String, Expr)]
+type Context = Map String Expr
 
 
 eval :: Expr -> State Context Expr
@@ -28,16 +29,20 @@ eval n = return n
 
 evalClean = runClean.eval
 
-runClean = flip runState []
+runClean = flip runState Map.empty
 
 evalAll exprs = mapWithState eval exprs
 
 evalAllClean = runClean.evalAll
 
-putDef (SymbolE n) v = State (\ctx ->  (v,(n, v): ctx))
+putDef (SymbolE n) v = State put  
+                  where put ctx | member n ctx = error "already defined"
+                                | otherwise = (v, insert n v ctx)    
+
+
 getDef (SymbolE n) = do
            ctx <- get
-           return . fromJust . lookup n $ ctx
+           return $ ctx ! n
 
 
 swap (x, y) = (y, x)
