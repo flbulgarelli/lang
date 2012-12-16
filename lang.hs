@@ -58,7 +58,7 @@ getDef (Sym n) = do
 
 swap (x, y) = (y, x)
 
-mapWithState ::  (a-> State s a) -> [a] -> State s [a]
+mapWithState ::  (a-> State s b) -> [a] -> State s [b]
 mapWithState f xs = State $ mapAccumStateL f xs
    where mapAccumStateL f xs s = (swap.mapAccumL (\s' a -> (swap.runState (f a)) s') s) xs
 
