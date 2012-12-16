@@ -16,6 +16,8 @@ data Expr = U
           | Send Expr Expr
           deriving (Show, Read)
 
+messageArgs (M _ a) = a
+messageSelector (M s _) = s
 
 type Context = Map String Expr
 
@@ -24,8 +26,8 @@ type Context = Map String Expr
 eval :: Expr -> State Context Expr
 eval (Send receptor message) = do r <- eval receptor
                                   m <- eval message
-                                  return (Send r m)
-eval (Comment _) = return U
+                                  return $ methodLookup r (messageSelector m) (messageArgs m)
+eval (Comment _) = return U           
 eval (VSet name value) = do n <- eval name
                             v <- eval value
                             putDef updateCheck n v                      
@@ -51,7 +53,25 @@ evalAllClean = runClean.evalAll
 
 {- Method lookup -}
 
---TODO 
+methodLookup receptor (Sym selector) = methodLookup' receptor selector
+methodLookup _        _ = error "selector must be a symbol" 
+
+methodLookup' :: Expr -> String -> [Expr] -> Expr
+methodLookup' (N n) "+" []     = M (Sym "+") [N n]
+methodLookup' (N n) "+" [N n2] = N (n + n2)
+
+methodLookup' (N n) "*" []     = M (Sym "*") [N n]
+methodLookup' (N n) "*" [N n2] = N (n * n2)
+
+-- TODO must define how to work with lazy evaluation: fixed? configurable? always?
+methodLookup' b@(B _)   "ifelse"   []   = M (Sym "ifelse")  [b]
+methodLookup' b@(B _)   "ifelse"  [e]   = M (Sym "ifelse")  [b, e]
+methodLookup' (B True)  "ifelse" [e, _] = e
+methodLookup' (B False) "ifelse" [_, e] = e
+methodLookup' e1        "ifelse" [b@(B _)]  = methodLookup' b "ifelse" [e1] 
+methodLookup' e2        "ifelse" [b@(B _), e1] = methodLookup'  b "ifelse" [e1, e2]      
+
+
 {- Context handling -}
 
 type PutCheck = (String -> Context -> Bool, String)

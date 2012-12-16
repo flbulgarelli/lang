@@ -12,3 +12,9 @@ Send  (V (Sym "foo")) (M (Sym "+") [(N 3)])
 Comment "equivalent to previous line"
 VDef (Sym "add_three") (M (Sym "+") [(N 3)])
 Send (V (Sym "foo")) (V (Sym "add_three"))
+Comment "messages are partially-appliable: they are always currified. Here 2 + is a message"
+Send (N 4)  (Send (N 2) (M (Sym "+") []))
+Comment "basic if-else"
+Send (B False) (M (Sym "ifelse")  [(N 4), (N 5)]) 
+Comment "even ifs are partially appliable messages"
+Send (N 5)  (Send (N 4) (Send (B False) (M (Sym "ifelse")  [])))
