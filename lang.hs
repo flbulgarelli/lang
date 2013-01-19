@@ -33,8 +33,8 @@ eval (O className args) = do cn <- eval className
 eval (CDef _ _ _) = error "not implemented"
 eval (MDef _ _ _) = error "not implemented"
 eval (Send receptor message) = do r <- eval receptor
-                                  m <- eval message
-                                  return $ methodLookup r (messageSelector m) (messageArgs m)
+                                  M s a <- eval message
+                                  return $ methodLookup r s a
 eval (Comment _) = return U           
 eval (VSet name value) = do n <- eval name
                             v <- eval value
