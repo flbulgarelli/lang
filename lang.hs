@@ -3,20 +3,20 @@ import Data.Traversable
 import Data.Maybe
 import Data.Map as Map hiding (map)
 
-data Expr = U 
-          | N Double
-          | S String
-          | Sym String 
-          | B   Bool
-          | M Expr [Expr] 
-          | V Expr
-          | VDef Expr Expr
-          | VSet Expr Expr
-          | Comment String
-          | Send Expr Expr
-          | MDef Expr [Expr] [Expr]
-          | CDef Expr [Expr] [Expr] 
-          | O Expr [Expr]
+data Expr = U                            -- unit value 
+          | N Double                     -- a number
+          | S String                     -- an string
+          | Sym String                   -- a symbol    
+          | B   Bool                     -- a boolean 
+          | M Expr [Expr]                -- a message with selector and arguments list
+          | V Expr                       -- a variable. Notice that its identifier may be an expresion!
+          | VDef Expr Expr               -- variable binding - definition, with identifier and value
+          | VSet Expr Expr               -- variable destructive assignment
+          | Comment String               -- a comment
+          | Send Expr Expr               -- message send, with receptor and message 
+          | MDef Expr [Expr] [Expr]      -- method definition      
+          | CDef Expr [Expr] [Expr]      -- class definition
+          | O Expr [Expr]                -- an object, with class and constructor arguments
           deriving (Show, Read)
 
 messageArgs (M _ a) = a
