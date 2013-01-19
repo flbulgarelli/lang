@@ -14,6 +14,9 @@ data Expr = U
           | VSet Expr Expr
           | Comment String
           | Send Expr Expr
+          | MDef Expr [Expr] [Expr]
+          | CDef Expr [Expr] [Expr] 
+          | O Expr [Expr]
           deriving (Show, Read)
 
 messageArgs (M _ a) = a
@@ -24,6 +27,11 @@ type Context = Map String Expr
 {-- Expression evaluation --}
 
 eval :: Expr -> State Context Expr
+eval (O className args) = do cn <- eval className
+                             a  <- mapWithState eval args
+                             return $ O cn a                          
+eval (CDef _ _ _) = error "not implemented"
+eval (MDef _ _ _) = error "not implemented"
 eval (Send receptor message) = do r <- eval receptor
                                   m <- eval message
                                   return $ methodLookup r (messageSelector m) (messageArgs m)
