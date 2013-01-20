@@ -9,6 +9,7 @@ data Expr = U                            -- unit value
           | Sym String                   -- a symbol    
           | B   Bool                     -- a boolean 
           | M Expr [Expr]                -- a message with selector and arguments list
+          | PM Expr Expr [Expr]          -- a partial message, with original receptor, selector, and partial arguments list
           | V Expr                       -- a variable. Notice that its identifier may be an expresion!
           | VDef Expr Expr               -- variable binding - definition, with identifier and value
           | VSet Expr Expr               -- variable destructive assignment
@@ -33,8 +34,8 @@ eval (O className args) = do cn <- eval className
 eval (CDef _ _ _) = error "not implemented"
 eval (MDef _ _ _) = error "not implemented"
 eval (Send receptor message) = do r <- eval receptor
-                                  M s a <- eval message
-                                  return $ methodLookup r s a
+                                  m <- eval message
+                                  return $ messageResolve r m
 eval (Comment _) = return U           
 eval (VSet name value) = do n <- eval name
                             v <- eval value
@@ -60,25 +61,34 @@ evalAll exprs = mapWithState eval exprs
 evalAllClean = runClean.evalAll
 
 {- Method lookup -}
+messageResolve r (M s a) =  methodLookup r s a 
+messageResolve r' (PM r s a) = methodLookup r s (a ++ [r'])
 
-methodLookup receptor (Sym selector) = methodLookup' receptor selector
+methodLookup receptor (Sym selector) = methodLookup' receptor selector receptor selector
 methodLookup _        _ = error "selector must be a symbol" 
 
-methodLookup' :: Expr -> String -> [Expr] -> Expr
-methodLookup' (N n) "+" []     = M (Sym "+") [N n]
-methodLookup' (N n) "+" [N n2] = N (n + n2)
-
-methodLookup' (N n) "*" []     = M (Sym "*") [N n]
-methodLookup' (N n) "*" [N n2] = N (n * n2)
+methodLookup' :: Expr -> String -> Expr -> String -> [Expr] -> Expr
+methodLookup' (N n) "+" = run1 (\(N n2) ->  N (n + n2))
+methodLookup' (N n) "*" = run1 (\(N n2) ->  N (n * n2))
+methodLookup' (N n) "-" = run1 (\(N n2) ->  N (n - n2))
 
 -- TODO must define how to work with lazy evaluation: fixed? configurable? always?
-methodLookup' b@(B _)   "ifelse"   []   = M (Sym "ifelse")  [b]
-methodLookup' b@(B _)   "ifelse"  [e]   = M (Sym "ifelse")  [b, e]
-methodLookup' (B True)  "ifelse" [e, _] = e
-methodLookup' (B False) "ifelse" [_, e] = e
-methodLookup' e1        "ifelse" [b@(B _)]  = methodLookup' b "ifelse" [e1] 
-methodLookup' e2        "ifelse" [b@(B _), e1] = methodLookup'  b "ifelse" [e1, e2]      
+methodLookup' (B True)  "ifelse"   = run2 (\e1 _ -> e1)
+methodLookup' (B False) "ifelse"   = run2 (\_ e2 -> e2)
 
+
+run1 :: (Expr -> Expr) -> Expr -> String -> [Expr] -> Expr
+run1 impl _ _ [a1]     = impl a1
+run1 _ r s as          = runPartial 1 r s as
+
+run2 impl _ _ [a1, a2] = impl a1 a2
+run2 _    r s as       = runPartial 2 r s as
+
+run3 impl _ _ [a1, a2, a3] = impl a1 a2 a3
+run3 _    r s as           = runPartial 3 r s as
+
+runPartial arity r s as | length as < arity = PM r (Sym s) as
+                        | otherwise = error "too much arguments"
 
 {- Context handling -}
 
@@ -108,3 +118,4 @@ evalFile filename = do
                     content <- readFile filename
                     return . evalAllClean . map read . lines $ content 
 
+--TODO debug = ... show, format, print line number, print expression, print expression result
